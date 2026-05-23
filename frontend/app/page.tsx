@@ -11,6 +11,7 @@ import {
   ShieldAlert,
 } from "lucide-react";
 
+import { AnalysisLoadingPanel } from "@/components/AnalysisLoadingPanel";
 import { HardWordHeatmap } from "@/components/HardWordHeatmap";
 import { ProposalCards } from "@/components/ProposalCards";
 import { SludgeGauge } from "@/components/SludgeGauge";
@@ -239,22 +240,7 @@ export default function Home() {
           </div>
         )}
 
-        {loading && (
-          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white/80">
-            <div className="relative h-12 w-12">
-              <div className="absolute inset-0 animate-ping rounded-full bg-blue-400/30" />
-              <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-100">
-                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
-              </div>
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-semibold text-slate-800">ページを解析しています</p>
-              <p className="mt-0.5 text-xs text-slate-500">
-                スクレイピング → AI診断 → 改善案生成
-              </p>
-            </div>
-          </div>
-        )}
+        {loading && <AnalysisLoadingPanel active={loading} />}
 
         {!loading && result && (
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-12">
