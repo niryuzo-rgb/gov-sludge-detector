@@ -15,6 +15,10 @@ import { HardWordHeatmap } from "@/components/HardWordHeatmap";
 import { ProposalCards } from "@/components/ProposalCards";
 import { SludgeGauge } from "@/components/SludgeGauge";
 import { analyzeUrl } from "@/lib/api";
+import {
+  normalizeUrlForSubmit,
+  normalizeUrlOnInput,
+} from "@/lib/urlInput";
 import type { AnalyzeResponse } from "@/lib/types";
 
 const SAMPLE_URL = "https://www.city.shinagawa.tokyo.jp/";
@@ -59,22 +63,35 @@ export default function Home() {
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
   async function runAnalyze(targetUrl: string) {
-    const trimmed = targetUrl.trim();
-    if (!trimmed || loading) return;
+    if (loading) return;
 
-    setUrl(trimmed);
+    const normalized = normalizeUrlForSubmit(targetUrl);
+    if (!normalized) {
+      setError("URLを入力してください");
+      setResult(null);
+      return;
+    }
+
+    setUrl(normalized);
     setError(null);
     setLoading(true);
     setResult(null);
 
     try {
-      const data = await analyzeUrl(trimmed);
+      const data = await analyzeUrl(normalized);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "不明なエラーが発生しました。");
     } finally {
       setLoading(false);
     }
+  }
+
+  function handleUrlChange(next: string) {
+    setError((prev) =>
+      prev === "URLを入力してください" ? null : prev,
+    );
+    setUrl((prev) => normalizeUrlOnInput(prev, next));
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -111,17 +128,24 @@ export default function Home() {
             <div className="relative min-w-0 flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
-                type="url"
-                required
+                type="text"
+                inputMode="url"
+                autoComplete="url"
                 value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://www.city.example.lg.jp/..."
+                onChange={(e) => handleUrlChange(e.target.value)}
+                onBlur={() => {
+                  if (url.trim()) {
+                    setUrl(normalizeUrlForSubmit(url));
+                  }
+                }}
+                placeholder="www.city.example.lg.jp"
+                aria-label="市役所サイトのURL"
                 className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
             <button
               type="submit"
-              disabled={loading || !url.trim()}
+              disabled={loading}
               className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
@@ -170,7 +194,13 @@ export default function Home() {
 
       <main className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden px-3 py-2 sm:px-4">
         {error && (
-          <div className="mb-2 flex shrink-0 items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+          <div
+            className={`mb-2 flex shrink-0 items-start gap-2 rounded-lg border px-3 py-2 ${
+              error === "URLを入力してください"
+                ? "border-amber-200 bg-amber-50 text-amber-900"
+                : "border-red-200 bg-red-50 text-red-800"
+            }`}
+          >
             <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
             <p className="text-xs">{error}</p>
           </div>
