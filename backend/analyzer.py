@@ -31,7 +31,73 @@ class AnalysisResult(BaseModel):
     b_group_proposal: str
 
 
-SYSTEM_PROMPT = """あなたは日本の市役所・行政ウェブサイトのUI/UXと「行政の泥（Sludge）」を診断する専門家です。
+"""OpenAI-based municipal UX / sludge analyzer."""
+
+from __future__ import annotations
+
+import json
+import os
+import re
+from typing import Any, Literal
+
+from dotenv import load_dotenv
+from openai import OpenAI
+from pydantic import BaseModel, Field
+
+from scraper import ScrapeResult
+
+load_dotenv()
+
+ANALYSIS_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+
+TargetAudience = Literal["senior", "foreigner", "native", "all"]
+
+TARGET_LABELS: dict[TargetAudience, str] = {
+    "senior": "高齢者・シニア層",
+    "foreigner": "外国人・非ネイティブ",
+    "native": "デジタルネイティブ（一般）",
+    "all": "すべての市民（平均）",
+}
+
+TARGET_FOCUS: dict[TargetAudience, str] = {
+    "senior": """
+【想定ユーザー: 高齢者・シニア層】
+この層の視点で厳しめに評価してください。特に以下を重視し、sludge_score と time_tax_minutes に反映させてください。
+- 文字サイズ・コントラスト・アクセシビリティ（小さい文字、薄い色、リンクの判別困難）
+- カタカナ語・外来語・略語の多用（説明なしのデジタル用語）
+- 手順の多段階化、PDF前提、窓口誘導の曖昧さ
+- 操作ミスを招くUI（ボタンが小さい、専門用語だらけのフォーム）
+hard_words には高齢者にとって負担の大きい用語を優先し、plain_japanese は平易な日本語で説明してください。
+b_group_proposal は大きな文字・少ないステップ・電話/対面案内の明示を含めてください。
+""",
+    "foreigner": """
+【想定ユーザー: 外国人・非ネイティブ】
+この層の視点で厳しめに評価してください。特に以下を重視し、sludge_score と time_tax_minutes に反映させてください。
+- 難しい漢字・熟語・お役所言葉（やさしい日本語・多言語対応の欠如）
+- 日本の制度・自治体手続き特有の前提知識（住民票、マイナンバー、印鑑文化など）
+- 英語/other言語情報の不足、住所・氏名表記の複雑さ
+- 在留・国籍・母国との手続きの違いが説明されていない点
+hard_words には翻訳・平易化が必要な語を優先し、plain_japanese は外国人にも伝わる説明にしてください。
+b_group_proposal は多言語切替・図解・チャットでの段階的案内を含めてください。
+""",
+    "native": """
+【想定ユーザー: デジタルネイティブ（一般）】
+この層の視点で評価してください。スマホ前提・短時間完了を期待するため、以下を重視してください。
+- 情報の冗長さ、スクロール量、PDF/別ページ遷移の多さ
+- チャットボットやワンストップ申請の欠如、古いWebデザイン
+- 不必要な窓口誘導、紙申請前提の記述
+- 検索・フィルタ・進捗表示の不足
+sludge_score は「時間の無駄」「手間の多さ」に焦点を当て、time_tax_minutes はデジタル完結時の理想との差を反映してください。
+b_group_proposal はモバイルファースト・チャットUI・最短ステップを具体的に示してください。
+""",
+    "all": """
+【想定ユーザー: すべての市民（平均）】
+特定の弱い層に偏らず、一般的な市民が手続きを完了するまでの負担をバランスよく評価してください。
+文字量、難解語、手順数、フォームの複雑さを総合的に見て sludge_score と time_tax_minutes を算出してください。
+""",
+}
+
+JSON_SCHEMA_INSTRUCTION = """
 与えられたページテキストを分析し、必ず次のJSONオブジェクトのみを返してください（Markdownや説明文は不要）。
 
 {
@@ -45,11 +111,22 @@ SYSTEM_PROMPT = """あなたは日本の市役所・行政ウェブサイトのU
 ルール:
 - hard_wordsは3〜8件
 - raw_text_highlightedは実際の本文抜粋をベースにし、ハイライトはspanのみ使用
-- 日本語で回答"""
+- 日本語で回答
+"""
 
 
-def _build_user_prompt(scrape: ScrapeResult) -> str:
-    return f"""URL: {scrape.url}
+def build_system_prompt(target: TargetAudience) -> str:
+    label = TARGET_LABELS[target]
+    return (
+        "あなたは日本の市役所・行政ウェブサイトのUI/UXと「行政の泥（Sludge）」を診断する専門家です。\n"
+        f"今回の診断は「{label}」を主な想定利用者としたシミュレーションです。\n"
+        f"{TARGET_FOCUS[target].strip()}\n"
+        f"{JSON_SCHEMA_INSTRUCTION}"
+    )
+
+def _build_user_prompt(scrape: ScrapeResult, target: TargetAudience) -> str:
+    return f"""想定ターゲット: {TARGET_LABELS[target]} (target={target})
+URL: {scrape.url}
 タイトル: {scrape.title}
 フォーム数: {scrape.form_count}
 リンク数: {scrape.link_count}
@@ -58,9 +135,6 @@ def _build_user_prompt(scrape: ScrapeResult) -> str:
 --- ページ本文 ---
 {scrape.main_text}
 """
-
-
-def _parse_json_response(content: str) -> dict[str, Any]:
     text = content.strip()
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:
@@ -80,7 +154,10 @@ def _fallback_highlight(text: str, hard_words: list[HardWord]) -> str:
     return excerpt
 
 
-def analyze_scrape(scrape: ScrapeResult) -> AnalysisResult:
+def analyze_scrape(
+    scrape: ScrapeResult,
+    target: TargetAudience = "all",
+) -> AnalysisResult:
     api_key = os.getenv("OPENAI_API_KEY")
     if not api_key:
         raise RuntimeError(
@@ -93,8 +170,8 @@ def analyze_scrape(scrape: ScrapeResult) -> AnalysisResult:
         temperature=0.4,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": _build_user_prompt(scrape)},
+            {"role": "system", "content": build_system_prompt(target)},
+            {"role": "user", "content": _build_user_prompt(scrape, target)},
         ],
     )
 

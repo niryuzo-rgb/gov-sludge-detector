@@ -2,11 +2,13 @@
 
 from __future__ import annotations
 
+from typing import Literal
+
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, HttpUrl
 
-from analyzer import AnalysisResult, analyze_scrape
+from analyzer import AnalysisResult, TargetAudience, analyze_scrape
 from scraper import scrape_url
 
 app = FastAPI(
@@ -30,6 +32,7 @@ app.add_middleware(
 
 class AnalyzeRequest(BaseModel):
     url: HttpUrl
+    target: TargetAudience = "all"
 
 
 class AnalyzeResponse(BaseModel):
@@ -79,7 +82,7 @@ def analyze(body: AnalyzeRequest) -> AnalyzeResponse:
         ) from e
 
     try:
-        analysis = analyze_scrape(scrape)
+        analysis = analyze_scrape(scrape, target=body.target)
     except RuntimeError as e:
         raise HTTPException(status_code=500, detail=str(e)) from e
     except Exception as e:
