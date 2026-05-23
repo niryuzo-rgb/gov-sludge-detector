@@ -19,7 +19,8 @@ import {
   normalizeUrlForSubmit,
   normalizeUrlOnInput,
 } from "@/lib/urlInput";
-import type { AnalyzeResponse } from "@/lib/types";
+import type { AnalyzeResponse, AnalyzeTarget } from "@/lib/types";
+import { TARGET_OPTIONS } from "@/lib/types";
 
 const SAMPLE_URL = "https://www.city.shinagawa.tokyo.jp/";
 
@@ -58,11 +59,15 @@ function PanelCard({
 
 export default function Home() {
   const [url, setUrl] = useState("");
+  const [target, setTarget] = useState<AnalyzeTarget>("all");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
-  async function runAnalyze(targetUrl: string) {
+  async function runAnalyze(
+    targetUrl: string,
+    audience: AnalyzeTarget = target,
+  ) {
     if (loading) return;
 
     const normalized = normalizeUrlForSubmit(targetUrl);
@@ -78,7 +83,7 @@ export default function Home() {
     setResult(null);
 
     try {
-      const data = await analyzeUrl(normalized);
+      const data = await analyzeUrl(normalized, audience);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "不明なエラーが発生しました。");
@@ -123,40 +128,65 @@ export default function Home() {
 
           <form
             onSubmit={handleSubmit}
-            className="flex flex-col gap-2 sm:flex-row sm:items-center"
+            className="flex flex-col gap-2"
           >
-            <div className="relative min-w-0 flex-1">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                inputMode="url"
-                autoComplete="url"
-                value={url}
-                onChange={(e) => handleUrlChange(e.target.value)}
-                onBlur={() => {
-                  if (url.trim()) {
-                    setUrl(normalizeUrlForSubmit(url));
-                  }
-                }}
-                placeholder="www.city.example.lg.jp"
-                aria-label="市役所サイトのURL"
-                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
-              />
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-end">
+              <div className="relative min-w-0 flex-1">
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input
+                  type="text"
+                  inputMode="url"
+                  autoComplete="url"
+                  value={url}
+                  onChange={(e) => handleUrlChange(e.target.value)}
+                  onBlur={() => {
+                    if (url.trim()) {
+                      setUrl(normalizeUrlForSubmit(url));
+                    }
+                  }}
+                  placeholder="www.city.example.lg.jp"
+                  aria-label="市役所サイトのURL"
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
+                />
+              </div>
+
+              <div className="w-full shrink-0 lg:w-52">
+                <label
+                  htmlFor="target-audience"
+                  className="mb-1 block text-[10px] font-medium text-slate-500"
+                >
+                  想定されるユーザー層
+                </label>
+                <select
+                  id="target-audience"
+                  value={target}
+                  onChange={(e) => setTarget(e.target.value as AnalyzeTarget)}
+                  disabled={loading}
+                  className="h-10 w-full rounded-xl border border-slate-200 bg-white px-2.5 text-xs text-slate-700 shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60"
+                >
+                  {TARGET_OPTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                disabled={loading}
+                className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60 lg:mb-0"
+              >
+                {loading ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    診断中…
+                  </>
+                ) : (
+                  "診断開始"
+                )}
+              </button>
             </div>
-            <button
-              type="submit"
-              disabled={loading}
-              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {loading ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  診断中…
-                </>
-              ) : (
-                "診断開始"
-              )}
-            </button>
           </form>
 
           <div className="flex justify-start sm:pl-0.5">
@@ -175,6 +205,9 @@ export default function Home() {
 
           {result && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600">
+              <span className="rounded-md bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700">
+                {TARGET_OPTIONS.find((o) => o.value === target)?.label}
+              </span>
               <span className="max-w-full truncate font-medium text-slate-800">
                 {result.title || result.url}
               </span>

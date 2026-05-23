@@ -5,39 +5,6 @@ from __future__ import annotations
 import json
 import os
 import re
-from typing import Any
-
-from dotenv import load_dotenv
-from openai import OpenAI
-from pydantic import BaseModel, Field
-
-from scraper import ScrapeResult
-
-load_dotenv()
-
-ANALYSIS_MODEL = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
-
-
-class HardWord(BaseModel):
-    term: str
-    plain_japanese: str
-
-
-class AnalysisResult(BaseModel):
-    sludge_score: int = Field(ge=0, le=100)
-    time_tax_minutes: float = Field(ge=0)
-    hard_words: list[HardWord]
-    raw_text_highlighted: str
-    b_group_proposal: str
-
-
-"""OpenAI-based municipal UX / sludge analyzer."""
-
-from __future__ import annotations
-
-import json
-import os
-import re
 from typing import Any, Literal
 
 from dotenv import load_dotenv
@@ -115,6 +82,19 @@ JSON_SCHEMA_INSTRUCTION = """
 """
 
 
+class HardWord(BaseModel):
+    term: str
+    plain_japanese: str
+
+
+class AnalysisResult(BaseModel):
+    sludge_score: int = Field(ge=0, le=100)
+    time_tax_minutes: float = Field(ge=0)
+    hard_words: list[HardWord]
+    raw_text_highlighted: str
+    b_group_proposal: str
+
+
 def build_system_prompt(target: TargetAudience) -> str:
     label = TARGET_LABELS[target]
     return (
@@ -123,6 +103,7 @@ def build_system_prompt(target: TargetAudience) -> str:
         f"{TARGET_FOCUS[target].strip()}\n"
         f"{JSON_SCHEMA_INSTRUCTION}"
     )
+
 
 def _build_user_prompt(scrape: ScrapeResult, target: TargetAudience) -> str:
     return f"""想定ターゲット: {TARGET_LABELS[target]} (target={target})
@@ -135,6 +116,9 @@ URL: {scrape.url}
 --- ページ本文 ---
 {scrape.main_text}
 """
+
+
+def _parse_json_response(content: str) -> dict[str, Any]:
     text = content.strip()
     fence = re.search(r"```(?:json)?\s*([\s\S]*?)```", text)
     if fence:

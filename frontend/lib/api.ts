@@ -1,11 +1,14 @@
 import { API_URL } from "./config";
-import type { AnalyzeResponse } from "./types";
+import type { AnalyzeResponse, AnalyzeTarget } from "./types";
 
-export async function analyzeUrl(url: string): Promise<AnalyzeResponse> {
+export async function analyzeUrl(
+  url: string,
+  target: AnalyzeTarget = "all",
+): Promise<AnalyzeResponse> {
   const response = await fetch(`${API_URL}/api/analyze`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ url }),
+    body: JSON.stringify({ url, target }),
   });
 
   const data = await response.json().catch(() => ({}));
