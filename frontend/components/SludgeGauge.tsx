@@ -19,30 +19,30 @@ function scoreColor(score: number): string {
 }
 
 export function SludgeGauge({ score }: SludgeGaugeProps) {
-  const radius = 72;
+  const radius = 52;
   const circumference = 2 * Math.PI * radius;
   const offset = circumference - (score / 100) * circumference;
   const color = scoreColor(score);
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <div className="relative h-44 w-44">
-        <svg className="h-full w-full -rotate-90" viewBox="0 0 180 180">
+    <div className="flex flex-col items-center gap-2">
+      <div className="relative h-32 w-32">
+        <svg className="h-full w-full -rotate-90" viewBox="0 0 160 160">
           <circle
-            cx="90"
-            cy="90"
+            cx="80"
+            cy="80"
             r={radius}
             fill="none"
             stroke="#e5e7eb"
-            strokeWidth="14"
+            strokeWidth="10"
           />
           <circle
-            cx="90"
-            cy="90"
+            cx="80"
+            cy="80"
             r={radius}
             fill="none"
             stroke={color}
-            strokeWidth="14"
+            strokeWidth="10"
             strokeLinecap="round"
             strokeDasharray={circumference}
             strokeDashoffset={offset}
@@ -50,15 +50,15 @@ export function SludgeGauge({ score }: SludgeGaugeProps) {
           />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-4xl font-bold tabular-nums text-slate-900">
+          <span className="text-3xl font-bold tabular-nums text-slate-900">
             {score}
           </span>
-          <span className="text-xs font-medium text-slate-500">/ 100</span>
+          <span className="text-[10px] font-medium text-slate-500">/ 100</span>
         </div>
       </div>
       <div className="text-center">
-        <p className="text-sm font-semibold text-slate-700">Sludgeスコア</p>
-        <p className="text-xs text-slate-500">{scoreLabel(score)}</p>
+        <p className="text-xs font-semibold text-slate-700">Sludgeスコア</p>
+        <p className="text-[10px] text-slate-500">{scoreLabel(score)}</p>
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, ReactNode, useState } from "react";
 import {
   AlertCircle,
   Clock,
@@ -16,6 +16,39 @@ import { ProposalCards } from "@/components/ProposalCards";
 import { SludgeGauge } from "@/components/SludgeGauge";
 import { analyzeUrl } from "@/lib/api";
 import type { AnalyzeResponse } from "@/lib/types";
+
+function PanelCard({
+  label,
+  labelClass,
+  title,
+  subtitle,
+  children,
+  className = "",
+}: {
+  label: string;
+  labelClass: string;
+  title: string;
+  subtitle?: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <section
+      className={`flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-xl border bg-white shadow-sm ${className}`}
+    >
+      <div className="shrink-0 border-b border-slate-100 px-3 py-2">
+        <p className={`text-[10px] font-semibold uppercase tracking-wide ${labelClass}`}>
+          {label}
+        </p>
+        <h2 className="text-sm font-bold text-slate-900">{title}</h2>
+        {subtitle && (
+          <p className="mt-0.5 text-[11px] leading-snug text-slate-500">{subtitle}</p>
+        )}
+      </div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-3">{children}</div>
+    </section>
+  );
+}
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -40,43 +73,46 @@ export default function Home() {
   }
 
   return (
-    <div className="min-h-full bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur-md">
-        <div className="mx-auto flex max-w-7xl flex-col gap-6 px-4 py-8 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-600 text-white shadow-lg shadow-blue-600/25">
-              <ShieldAlert className="h-6 w-6" />
+    <div className="flex h-screen flex-col overflow-hidden bg-gray-50">
+      <header className="shrink-0 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+        <div className="mx-auto flex max-w-[1600px] flex-col gap-2 px-3 py-2 sm:px-4">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-blue-600 text-white shadow-md">
+              <ShieldAlert className="h-5 w-5" />
             </div>
-            <div>
-              <h1 className="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-base font-bold tracking-tight text-slate-900 sm:text-lg">
                 Gov UX Analyzer
               </h1>
-              <p className="text-sm text-slate-500">
+              <p className="text-[11px] text-slate-500">
                 市役所サイトの「行政の泥（Sludge）」を自動診断
               </p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="flex flex-col gap-3 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-slate-400" />
+          <form
+            onSubmit={handleSubmit}
+            className="flex flex-col gap-2 sm:flex-row sm:items-center"
+          >
+            <div className="relative min-w-0 flex-1">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="url"
                 required
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 placeholder="https://www.city.example.lg.jp/..."
-                className="h-14 w-full rounded-2xl border border-slate-200 bg-white pl-12 pr-4 text-base shadow-sm outline-none transition focus:border-blue-400 focus:ring-4 focus:ring-blue-500/10"
+                className="h-10 w-full rounded-xl border border-slate-200 bg-white pl-9 pr-3 text-sm shadow-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/15"
               />
             </div>
             <button
               type="submit"
               disabled={loading || !url.trim()}
-              className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-8 text-base font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              className="inline-flex h-10 shrink-0 items-center justify-center gap-1.5 rounded-xl bg-blue-600 px-5 text-sm font-semibold text-white shadow-md transition hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading ? (
                 <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
+                  <Loader2 className="h-4 w-4 animate-spin" />
                   診断中…
                 </>
               ) : (
@@ -84,28 +120,45 @@ export default function Home() {
               )}
             </button>
           </form>
+
+          {result && (
+            <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600">
+              <span className="max-w-full truncate font-medium text-slate-800">
+                {result.title || result.url}
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <FileText className="h-3 w-3" />
+                {result.char_count.toLocaleString()} 文字
+              </span>
+              <span className="inline-flex items-center gap-1">
+                <Link2 className="h-3 w-3" />
+                リンク {result.link_count}
+              </span>
+              <span>フォーム {result.form_count}</span>
+            </div>
+          )}
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      <main className="mx-auto flex min-h-0 w-full max-w-[1600px] flex-1 flex-col overflow-hidden px-3 py-2 sm:px-4">
         {error && (
-          <div className="mb-6 flex items-start gap-3 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-red-800">
-            <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
-            <p className="text-sm">{error}</p>
+          <div className="mb-2 flex shrink-0 items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-red-800">
+            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+            <p className="text-xs">{error}</p>
           </div>
         )}
 
         {loading && (
-          <div className="flex min-h-[420px] flex-col items-center justify-center gap-4 rounded-3xl border border-dashed border-slate-300 bg-white/70 p-12">
-            <div className="relative h-16 w-16">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-slate-300 bg-white/80">
+            <div className="relative h-12 w-12">
               <div className="absolute inset-0 animate-ping rounded-full bg-blue-400/30" />
               <div className="relative flex h-full w-full items-center justify-center rounded-full bg-blue-100">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-6 w-6 animate-spin text-blue-600" />
               </div>
             </div>
             <div className="text-center">
-              <p className="font-semibold text-slate-800">ページを解析しています</p>
-              <p className="mt-1 text-sm text-slate-500">
+              <p className="text-sm font-semibold text-slate-800">ページを解析しています</p>
+              <p className="mt-0.5 text-xs text-slate-500">
                 スクレイピング → AI診断 → 改善案生成
               </p>
             </div>
@@ -113,81 +166,64 @@ export default function Home() {
         )}
 
         {!loading && result && (
-          <div className="space-y-4">
-            <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 shadow-sm">
-              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">
-                診断対象
-              </p>
-              <p className="mt-1 font-semibold text-slate-900">{result.title || result.url}</p>
-              <p className="mt-1 truncate text-sm text-blue-600">{result.url}</p>
-              <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-600">
-                <span className="inline-flex items-center gap-1.5">
-                  <FileText className="h-4 w-4" />
-                  {result.char_count.toLocaleString()} 文字
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Link2 className="h-4 w-4" />
-                  リンク {result.link_count}
-                </span>
-                <span>フォーム {result.form_count}</span>
-              </div>
-            </div>
-
-            <div className="grid min-h-[560px] grid-cols-1 gap-4 xl:grid-cols-12">
-              <section className="flex flex-col gap-4 rounded-3xl border border-slate-200 bg-white p-6 shadow-sm xl:col-span-3">
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-slate-500">
-                  ダッシュボード
-                </h2>
+          <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-12">
+            <PanelCard
+              label="Dashboard"
+              labelClass="text-slate-500"
+              title="ダッシュボード"
+              className="border-slate-200 lg:col-span-3"
+            >
+              <div className="flex flex-col items-center gap-3">
                 <SludgeGauge score={result.sludge_score} />
-
-                <div className="rounded-2xl bg-slate-900 p-5 text-white">
-                  <div className="flex items-center gap-2 text-slate-300">
-                    <Clock className="h-5 w-5" />
-                    <span className="text-xs font-medium uppercase tracking-wider">
+                <div className="w-full rounded-lg bg-slate-900 p-3 text-white">
+                  <div className="flex items-center gap-1.5 text-slate-300">
+                    <Clock className="h-4 w-4" />
+                    <span className="text-[10px] font-medium uppercase tracking-wider">
                       Time Tax
                     </span>
                   </div>
-                  <p className="mt-2 text-4xl font-bold tabular-nums">
+                  <p className="mt-1 text-3xl font-bold tabular-nums">
                     {result.time_tax_minutes}
-                    <span className="ml-1 text-lg font-medium text-slate-400">分</span>
+                    <span className="ml-1 text-base font-medium text-slate-400">分</span>
                   </p>
-                  <p className="mt-2 text-sm text-slate-400">
+                  <p className="mt-1 text-[11px] leading-snug text-slate-400">
                     手続き完了までに市民から奪われる予想時間
                   </p>
                 </div>
-              </section>
+              </div>
+            </PanelCard>
 
-              <section className="rounded-3xl border border-red-100 bg-gradient-to-b from-red-50/50 to-white p-6 shadow-sm xl:col-span-5">
-                <div className="mb-4">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-red-600">
-                    Before
-                  </p>
-                  <h2 className="text-lg font-bold text-slate-900">
-                    お役所言葉ヒートマップ
-                  </h2>
-                  <p className="text-sm text-slate-500">
-                    赤くハイライトされた用語にカーソルを合わせると、やさしい日本語が表示されます
-                  </p>
-                </div>
-                <HardWordHeatmap
-                  html={result.raw_text_highlighted}
-                  hardWords={result.hard_words}
-                />
-              </section>
+            <PanelCard
+              label="Before"
+              labelClass="text-red-600"
+              title="お役所言葉ヒートマップ"
+              subtitle="赤い用語にカーソルを合わせると、やさしい日本語が表示されます"
+              className="border-red-100 lg:col-span-5"
+            >
+              <HardWordHeatmap
+                html={result.raw_text_highlighted}
+                hardWords={result.hard_words}
+              />
+            </PanelCard>
 
-              <section className="rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50/50 to-white p-6 shadow-sm xl:col-span-4">
-                <ProposalCards proposal={result.b_group_proposal} />
-              </section>
-            </div>
+            <PanelCard
+              label="After"
+              labelClass="text-emerald-600"
+              title="B群 UI提案"
+              subtitle="理想のチャット風・ステップ型UI"
+              className="border-emerald-100 lg:col-span-4"
+            >
+              <ProposalCards proposal={result.b_group_proposal} />
+            </PanelCard>
           </div>
         )}
 
         {!loading && !result && !error && (
-          <div className="rounded-3xl border border-dashed border-slate-300 bg-white/60 p-12 text-center">
-            <p className="text-lg font-medium text-slate-700">
+          <div className="flex min-h-0 flex-1 flex-col items-center justify-center rounded-xl border border-dashed border-slate-300 bg-white/70 p-8 text-center">
+            <p className="text-sm font-medium text-slate-700">
               市役所の手続きページURLを入力して診断を開始してください
             </p>
-            <p className="mt-2 text-sm text-slate-500">
+            <p className="mt-1 text-xs text-slate-500">
               例: 住民票・転入届・ごみ出しなどの案内ページ
             </p>
           </div>
