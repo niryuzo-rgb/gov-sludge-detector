@@ -17,6 +17,8 @@ import { SludgeGauge } from "@/components/SludgeGauge";
 import { analyzeUrl } from "@/lib/api";
 import type { AnalyzeResponse } from "@/lib/types";
 
+const SAMPLE_URL = "https://www.city.shinagawa.tokyo.jp/";
+
 function PanelCard({
   label,
   labelClass,
@@ -56,20 +58,32 @@ export default function Home() {
   const [error, setError] = useState<string | null>(null);
   const [result, setResult] = useState<AnalyzeResponse | null>(null);
 
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
+  async function runAnalyze(targetUrl: string) {
+    const trimmed = targetUrl.trim();
+    if (!trimmed || loading) return;
+
+    setUrl(trimmed);
     setError(null);
     setLoading(true);
     setResult(null);
 
     try {
-      const data = await analyzeUrl(url.trim());
+      const data = await analyzeUrl(trimmed);
       setResult(data);
     } catch (err) {
       setError(err instanceof Error ? err.message : "不明なエラーが発生しました。");
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    await runAnalyze(url);
+  }
+
+  function handleSampleDemo() {
+    void runAnalyze(SAMPLE_URL);
   }
 
   return (
@@ -120,6 +134,20 @@ export default function Home() {
               )}
             </button>
           </form>
+
+          <div className="flex justify-start sm:pl-0.5">
+            <button
+              type="button"
+              onClick={handleSampleDemo}
+              disabled={loading}
+              className="text-[11px] font-normal text-slate-500 transition hover:text-blue-600 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              まずはデモを体験：
+              <span className="font-medium text-slate-600 hover:text-blue-600">
+                品川区役所（サンプル）の解析結果
+              </span>
+            </button>
+          </div>
 
           {result && (
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-lg border border-slate-100 bg-slate-50 px-2.5 py-1.5 text-[11px] text-slate-600">
